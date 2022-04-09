@@ -12,10 +12,10 @@ private:
 	WSAData wsa;
 	struct addrinfo hints;
 	struct addrinfo *serverinfo;
-	int sockfd;
+	int port, sockfd;
 	
 public:
-	server();
+	server(int _port);
 	bool initWSA();
 	bool initSocket();
 	bool bindSocket();
