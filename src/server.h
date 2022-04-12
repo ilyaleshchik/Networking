@@ -29,7 +29,7 @@ private:
 	#endif
 	struct addrinfo hints;
 	struct addrinfo *serverinfo;
-	struct sockaddr *ipAddr;
+	struct sockaddr_in *ipAddr;
 	int addrLen;
 	int port, sockfd, inet_type, sock_type, sock_protocol;
 	std::string ip;
@@ -48,7 +48,7 @@ public:
 	bool initDefault(int _port);
 	bool bindSocket();
 	bool startServer();
-	void getHostIP(int INET_TYPE);
+	void getHostIP();
 	~server();
 
 };

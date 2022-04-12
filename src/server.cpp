@@ -1,4 +1,5 @@
 #include "server.h"
+#include <cassert>
 #include <string>
 
 
@@ -7,6 +8,8 @@ server::server(int _port, int _inet_type, int _sock_type, std::string _ip) {
 	inet_type = _inet_type;
 	sock_type = _sock_type;
 	ip = _ip;
+	inet_pton(inet_type, ip.c_str(), ipAddr);
+	addrLen = sizeof(ipAddr);
 	serverinfo = nullptr;
 	memset(&hints, 0, sizeof hints);
 }
@@ -22,36 +25,33 @@ bool server::initWSA() {
 #endif
 
 void server::setPort(int _port) {
-	if(port < 0) {
-		throw 228;
-	}
+	assert(_port > 0);
 	port = _port;
 	return;
 }
 void server::setInet(int _inet_type) {
-	if(_inet_type != AF_INET && _inet_type != AF_INET6) {
-		throw 228;
-	}
+	assert(_inet_type == AF_INET || _inet_type == AF_INET6);
 	inet_type = _inet_type;
 	return;
 }
 void server::setSock(int _sock_type) {
-	if(_sock_type != SOCK_STREAM && _sock_type != SOCK_DGRAM) {
-		throw 228;
-	}
+
+	assert(_sock_type == SOCK_STREAM || _sock_type == SOCK_DGRAM);
 	sock_type = _sock_type;
 	return;
 }
 
 void server::setProtocol(int _protocol) {
+	assert(sock_protocol == IPPROTO_TCP);
 	sock_protocol = _protocol;
 	return;
 }
 
 void server::setIp(std::string _ip) {
 	ip = _ip;
-	inet_pton(inet_type, ip.c_str(), ipAddr);
-	addrLen = ip.size();
+	int status = inet_pton(inet_type, ip.c_str(), ipAddr);
+	assert(status > 0);
+	addrLen = sizeof(ipAddr);
 	return;
 }
 
@@ -61,39 +61,39 @@ bool server::initDefault(int _port) {
 	port = _port;
 	inet_type = AF_INET;
 	sock_type = SOCK_STREAM;
-	sock_protocol = IPPROTO_TCP;
 	memset(&hints, 0, sizeof hints);
-	hints.ai_flags = AI_PASSIVE;
 	hints.ai_family = inet_type;
 	hints.ai_socktype = sock_type;
-	hints.ai_protocol = sock_protocol;
+	hints.ai_flags = AI_PASSIVE;
 	int status = getaddrinfo(nullptr, std::to_string(port).c_str(), &hints, &serverinfo);
 	if(status != 0) {
 		std::cerr << "Getaddrinfo error: " << gai_strerror(status) << '\n';
 		return 1;
 	}
 	addrLen = serverinfo->ai_addrlen;
-	ipAddr = serverinfo->ai_addr;
+	ipAddr = (sockaddr_in *) serverinfo->ai_addr;
+	char curIp[INET6_ADDRSTRLEN];
+	inet_ntop(serverinfo->ai_family, &ipAddr->sin_addr, curIp, sizeof curIp);
+	ip = curIp;
+	sock_protocol = serverinfo->ai_protocol;
 	return 1;
 }
 
 bool server::bindSocket() {
 
 	sockfd = socket(inet_type, sock_type, sock_protocol);
-
-	int status = bind(sockfd, ipAddr, addrLen);
-
+	int status = bind(sockfd, (sockaddr*)(&ipAddr->sin_addr), addrLen);
 	if (status == -1) {
-		std::cerr << "Bind error!!!\n";
+		std::cerr << "Bind error!!!\n" << std::strerror(errno) << '\n';
 		return 1;
 	}
-	freeaddrinfo(serverinfo);
+	std::cout << "Server started!!!" << '\n' << "Port: " << port << '\n';
 	return 0;
 }
 
 
-void server::getHostIP(int INET_TYPE) {
-	//
+void server::getHostIP() {
+
 }
 
 server::~server() {
