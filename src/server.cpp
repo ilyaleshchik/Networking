@@ -65,10 +65,30 @@ bool server::initDefault(int _port) {
 	hints.ai_family = inet_type;
 	hints.ai_socktype = sock_type;
 	hints.ai_flags = AI_PASSIVE;
-	int status = getaddrinfo(nullptr, std::to_string(port).c_str(), &hints, &serverinfo);
+	int status = getaddrinfo(NULL, std::to_string(port).c_str(), &hints, &serverinfo);
 	if(status != 0) {
 		std::cerr << "Getaddrinfo error: " << gai_strerror(status) << '\n';
 		return 1;
+	}
+	struct addrinfo *p;
+	for(p = serverinfo; p != nullptr; p = p->ai_next) {
+		if(p->ai_family == AF_INET) {
+			std::cerr << "IPv4: ";
+			void *adr;
+			struct sockaddr_in *cur = (sockaddr_in *)p->ai_addr;
+			adr = &(cur->sin_addr);
+			char lol[INET6_ADDRSTRLEN];
+			inet_ntop(p->ai_family, adr, lol, sizeof lol);
+			std::cerr << lol << '\n';
+		}else {
+			std::cerr << "IPv6: ";
+			void *adr;
+			struct sockaddr_in6 *cur = (sockaddr_in6 *)p->ai_addr;
+			adr = &(cur->sin6_addr);
+			char lol[INET6_ADDRSTRLEN];
+			inet_ntop(p->ai_family, adr, lol, sizeof lol);
+			std::cerr << lol << '\n';
+		}
 	}
 	addrLen = serverinfo->ai_addrlen;
 	ipAddr = (sockaddr_in *) serverinfo->ai_addr;
@@ -87,7 +107,7 @@ bool server::bindSocket() {
 		std::cerr << "Bind error!!!\n" << std::strerror(errno) << '\n';
 		return 1;
 	}
-	std::cout << "Server started!!!" << '\n' << "Port: " << port << '\n';
+	std::cout << "Server started: " << ip << '\n' << "Port: " << port << '\n';
 	return 0;
 }
 
