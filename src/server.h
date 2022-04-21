@@ -1,5 +1,6 @@
 #pragma once
 #include <iostream>
+#include <stdlib.h>
 #include <string>
 #include <cstring>
 #include <errno.h>
@@ -27,29 +28,27 @@ private:
 	#ifdef _WIN32
 	WSAData wsa;
 	#endif
-	struct addrinfo hints;
-	struct addrinfo *serverinfo;
+	struct addrinfo hints, *serverinfo;
 	struct sockaddr_in *ipAddr;
-	int addrLen;
-	int port, sockfd, inet_type, sock_type, sock_protocol;
-	std::string ip;
+	int addrLen, sockfd, inet_type, sock_type, sock_protocol, backLog;
+	struct sigaction sa;
+	struct sockaddr_storage theirAddr;
+	int yes = 1;
+	std::string ip, port;
+	void *get_in_addr(struct sockaddr *sa);
+	void static sigchld_handler(int s);
+
 	
 public:
-	server(){}
-	server(int _port, int _inet_type, int _sock_type, std::string _ip);
+	server(std::string _port, int _backLog);
+	server(std::string _port, int _inet_type, int _sock_type, int _sock_protocol, std::string _ip, int _backLog);
 	#ifdef _WIN32
 	bool initWSA();
 	#endif
-	void setPort(int _port);
-	void setInet(int _inet_type);
-	void setSock(int _sock_type);
-	void setProtocol(int _protocol);
-	void setIp(std::string _ip);
-	bool initDefault(int _port);
+
+	bool bindDefault();
 	bool bindSocket();
 	bool startServer();
-	void getHostIP();
 	~server();
 
 };
-
