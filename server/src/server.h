@@ -41,13 +41,13 @@ private:
 	
 public:
 	server(std::string _port, int _backLog);
-	server(std::string _port, int _inet_type, int _sock_type, int _sock_protocol, std::string _ip, int _backLog);
+	//server(std::string _port, int _inet_type, int _sock_type, int _sock_protocol, std::string _ip, int _backLog);
 	#ifdef _WIN32
 	bool initWSA();
 	#endif
 
 	bool bindDefault();
-	bool bindSocket();
+	//bool bindSocket();
 	bool startServer();
 	~server();
 

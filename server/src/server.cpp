@@ -8,22 +8,6 @@ server::server(std::string _port, int _backLog) {
 	ip = "-1";
 	backLog = _backLog;
 }
-server::server(std::string _port, int _inet_type, int _sock_type, int _sock_protocol, std::string _ip, int _backLog) {
-	port = _port;
-	inet_type = _inet_type;
-	sock_type = _sock_type;
-	backLog = _backLog;
-	sock_protocol = _sock_protocol;
-	ip = _ip;
-	
-	int rv = inet_pton(inet_type, ip.c_str(), &ipAddr);
-	if(rv < 0) {
-		std::cerr << "Bind error!!!\n" << std::strerror(errno) << '\n';
-	}
-	addrLen = sizeof ipAddr;
-	serverinfo = nullptr;
-	memset(&hints, 0, sizeof hints);
-}
 
 #ifdef _WIN32
 bool server::initWSA() {
@@ -83,20 +67,6 @@ bool server::bindDefault() {
 	}
 	freeaddrinfo(serverinfo);
 	if(p == NULL) {
-		return 1;
-	}
-	return 0;
-}
-
-bool server::bindSocket() {
-	//Doesn't work
-	sockfd = socket(inet_type, sock_type, sock_protocol);
-	if(setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
-		return 1;
-	}
-	int status = bind(sockfd, (sockaddr*)(&ipAddr->sin_addr), addrLen);
-	if (status == -1) {
-		std::cerr << "Bind error!!!\n" << std::strerror(errno) << '\n';
 		return 1;
 	}
 	return 0;

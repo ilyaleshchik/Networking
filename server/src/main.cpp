@@ -3,7 +3,7 @@
 
 int main() {
 
-	server *srv = new server("3490", 10);
+	server *srv = new server("1337", 10);
 
 	srv->bindDefault();
 	srv->startServer();
