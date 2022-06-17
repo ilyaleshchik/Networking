@@ -37,6 +37,7 @@ private:
     struct addrinfo hints, *res;
     int sockfd;
     std::string ip, port;
+    void *getInAddr(struct sockaddr *sa);
     bool initSocket();//init socket descriptor
 
 public:
@@ -45,5 +46,6 @@ public:
     bool initWSA();
     #endif
     bool connectServer();
+    bool recvMessage(std::string &msg);//reciev text message
     ~client();
 };

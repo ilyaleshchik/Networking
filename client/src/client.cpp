@@ -39,6 +39,13 @@ bool client::initSocket() {
     return 0;
 }
 
+void *client::getInAddr(struct sockaddr* sa) {
+    if(sa->sa_family == AF_INET) {
+        return &(((struct sockaddr_in*)sa)->sin_addr);
+    }
+    return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
+
 
 bool client::connectServer() {
     if(initSocket() != 0)
@@ -49,7 +56,24 @@ bool client::connectServer() {
         std::cerr << "[ERROR]: connect()\n";
         return 1;
     }
-    std::cerr << "CONNECNTED\n";
+    char s[INET6_ADDRSTRLEN];
+    inet_ntop(res->ai_family, getInAddr((struct sockaddr *)res->ai_addr), s, sizeof s);
+    std::cerr << "[CONNECTED]: " << s << '\n';
+    freeaddrinfo(res);
+    return 0;
+}
+
+
+bool client::recvMessage(std::string &msg) {
+
+    char buf[100];
+    int numBytes = recv(sockfd, buf, 99, 0);
+    if(numBytes == -1) {
+        std::cerr << "[ERROR]: recv";
+        return 1;
+    }
+    buf[numBytes] = '\0';
+    msg = buf;
     return 0;
 }
 

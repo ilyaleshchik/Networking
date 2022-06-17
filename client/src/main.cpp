@@ -22,5 +22,9 @@ int main(int argc, char *argv[]) {
     if(ret != 0) 
         return 1;
 
+    std::string msg;
+    if(cl->recvMessage(msg) != 0)
+        return 1;
+    std::cerr << "[MESSAGE]: " << msg << '\n';
     return 0;
 }

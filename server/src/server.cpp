@@ -100,8 +100,8 @@ bool server::startServer() {
 		inet_ntop(theirAddr.ss_family, get_in_addr((struct sockaddr *)&theirAddr), s, sizeof s);
 		std::cerr << "New connection from: " << s << '\n';
 		if(!fork()) {
-			close(sockfd);
-			if(send(new_fd, "poshel nahui\n", 13, 0) == -1) {
+			//close(sockfd);
+			if(send(new_fd, "lyceumBSU<3", 11, 0) == -1) {
 				std::cerr << "Send\n";
 			}
 			close(new_fd);
