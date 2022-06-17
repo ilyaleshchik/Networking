@@ -46,6 +46,7 @@ bool server::bindDefault() {
 	int rv = getaddrinfo(nullptr, port.c_str(), &hints, &serverinfo);
 	if(rv != 0) {
 		std::cerr << "GetAddrinfo\n";
+		freeaddrinfo(serverinfo);
 		return 1;
 	}
 	struct addrinfo *p;
@@ -56,6 +57,7 @@ bool server::bindDefault() {
 		}
 		if(setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
 			perror("setsockopt");
+			freeaddrinfo(serverinfo);
 			return 0;
 		}
 		if(bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
@@ -78,7 +80,7 @@ bool server::startServer() {
 	if(listen(sockfd, backLog) == -1) {
 		return 1;
 	}
-	sa.sa_handler = server::sigchld_handler;
+	sa.sa_handler = server::sigchld_handler;	
 	sigemptyset(&sa.sa_mask);
 	sa.sa_flags = SA_RESTART;
 	if(sigaction(SIGCHLD, &sa, NULL) == -1) {
