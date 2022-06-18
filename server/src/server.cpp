@@ -45,7 +45,7 @@ bool server::bindDefault() {
 
 	int rv = getaddrinfo(nullptr, port.c_str(), &hints, &serverinfo);
 	if(rv != 0) {
-		std::cerr << "GetAddrinfo\n";
+		std::cerr << "[ERROR]: GetAddrinfo\n";
 		freeaddrinfo(serverinfo);
 		return 1;
 	}
@@ -75,6 +75,11 @@ bool server::bindDefault() {
 }
 
 
+bool server::sendTo(int sockto, std::string msg) {
+	return (send(sockto, msg.c_str(), msg.size(), 0) == -1);
+}
+
+
 bool server::startServer() {
 
 	if(listen(sockfd, backLog) == -1) {
@@ -84,25 +89,26 @@ bool server::startServer() {
 	sigemptyset(&sa.sa_mask);
 	sa.sa_flags = SA_RESTART;
 	if(sigaction(SIGCHLD, &sa, NULL) == -1) {
-		std::cerr << "sigaction";
+		std::cerr << "[ERROR]: sigaction";
 		return 1;
 	}
-	std::cerr << "server: waiting for connections...\n";
+	std::cerr << "[SERVER]: waiting for connections...\n";
 	while(1) {
 		socklen_t sin_size;
 		sin_size = sizeof theirAddr;
 		int new_fd = accept(sockfd, (struct sockaddr *)&theirAddr, &sin_size);
 		if(new_fd == -1) {
-			std::cerr << "Accept\n";
+			std::cerr << "[ERROR]: Accept\n";
 			continue;
 		}
-		char s[INET6_ADDRSTRLEN];
-		inet_ntop(theirAddr.ss_family, get_in_addr((struct sockaddr *)&theirAddr), s, sizeof s);
-		std::cerr << "New connection from: " << s << '\n';
-		if(!fork()) {
-			//close(sockfd);
-			if(send(new_fd, "lyceumBSU<3", 11, 0) == -1) {
-				std::cerr << "Send\n";
+		char new_ip[INET6_ADDRSTRLEN];
+		inet_ntop(theirAddr.ss_family, get_in_addr((struct sockaddr *)&theirAddr), new_ip, sizeof new_ip);
+		std::cerr << "[CONNECTION]: " << new_ip << '\n';
+
+		if(!fork()) {	
+			close(sockfd);
+			if(sendTo(new_fd, "lyceumBSU<3")) {
+				std::cerr << "[ERROR]: sendTo\n";
 			}
 			close(new_fd);
 			return 1;

@@ -35,6 +35,7 @@ private:
 	struct sockaddr_storage theirAddr;
 	int yes = 1;
 	std::string ip, port;
+	bool sendTo(int sockto, std::string msg);
 	void *get_in_addr(struct sockaddr *sa);
 	void static sigchld_handler(int s);
 
