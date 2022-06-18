@@ -31,11 +31,26 @@ bool client::initSocket() {
         return 1;
     }
 
-    sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-    if(sockfd < 0) {
-        std::cerr << "[ERROR]: socket()\n";
-        return 1;
+    struct addrinfo *p;
+
+    for(p = res; p != nullptr; p = p->ai_next) {
+        if((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+            perror("socket");
+            continue;
+        }
+        if(connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+            close(sockfd);
+            perror("connect");
+            continue;
+        }
+        break;
+    }   
+
+    if(p == nullptr) {
+        std::cerr << "[ERROR]: failed to connect\n";
+        return 1; 
     }
+    res = p;
     return 0;
 }
 
@@ -51,11 +66,6 @@ bool client::connectServer() {
     if(initSocket() != 0)
         return 1;
 
-    int ret = connect(sockfd, res->ai_addr, res->ai_addrlen);
-    if(ret == -1) {
-        std::cerr << "[ERROR]: connect()\n";
-        return 1;
-    }
     char s[INET6_ADDRSTRLEN];
     inet_ntop(res->ai_family, getInAddr((struct sockaddr *)res->ai_addr), s, sizeof s);
     std::cerr << "[CONNECTED]: " << s << '\n';
@@ -74,6 +84,7 @@ bool client::recvMessage(std::string &msg) {
     }
     buf[numBytes] = '\0';
     msg = buf;
+    close(sockfd);
     return 0;
 }
 
