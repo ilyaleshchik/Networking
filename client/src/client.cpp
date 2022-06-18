@@ -39,7 +39,11 @@ bool client::initSocket() {
             continue;
         }
         if(connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
-            close(sockfd);
+#ifdef _WIN32
+			closesocket(sockfd);
+#else
+			close(sockfd);
+#endif
             perror("connect");
             continue;
         }
@@ -84,7 +88,11 @@ bool client::recvMessage(std::string &msg) {
     }
     buf[numBytes] = '\0';
     msg = buf;
+#ifdef _WIN32
+	closesocket(sockfd);
+#else
     close(sockfd);
-    return 0;
+#endif
+	return 0;
 }
 

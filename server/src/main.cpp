@@ -12,7 +12,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	server *srv = new server(port, 10);
-
+	srv->initWSA();
 	srv->bindDefault();
 	srv->startServer();
 

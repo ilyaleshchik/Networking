@@ -14,9 +14,9 @@ int main(int argc, char *argv[]) {
 
     client *cl = new client(ip, port);
 
-    #ifdef _WIN32
+#ifdef _WIN32
     cl->initWSA();
-    #endif
+#endif
     int ret = cl->connectServer();
 
     if(ret != 0) 

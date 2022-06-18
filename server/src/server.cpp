@@ -19,6 +19,7 @@ bool server::initWSA() {
 }
 #endif
 
+#ifdef __unix__
 void server::sigchld_handler(int s) {
 
 	int saved_errno = errno;
@@ -26,7 +27,7 @@ void server::sigchld_handler(int s) {
 	errno = saved_errno;
 	return;
 }
-
+#endif
 
 void *server::get_in_addr(struct sockaddr* sa) {
 	if(sa->sa_family == AF_INET) {
@@ -61,7 +62,11 @@ bool server::bindDefault() {
 			return 0;
 		}
 		if(bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+#ifdef __unix__
 			close(sockfd);
+#else
+			closesocket(sockfd);
+#endif
 			perror("server: bind");
 			continue;
 		}
@@ -85,13 +90,16 @@ bool server::startServer() {
 	if(listen(sockfd, backLog) == -1) {
 		return 1;
 	}
-	sa.sa_handler = server::sigchld_handler;	
+#ifdef __unix__
+	sa.sa_handler = server::sigchld_handler;
 	sigemptyset(&sa.sa_mask);
 	sa.sa_flags = SA_RESTART;
-	if(sigaction(SIGCHLD, &sa, NULL) == -1) {
+	if (sigaction(SIGCHLD, &sa, NULL) == -1) {
 		std::cerr << "[ERROR]: sigaction";
 		return 1;
 	}
+#endif
+
 	std::cerr << "[SERVER]: waiting for connections...\n";
 	while(1) {
 		socklen_t sin_size;
@@ -104,8 +112,8 @@ bool server::startServer() {
 		char new_ip[INET6_ADDRSTRLEN];
 		inet_ntop(theirAddr.ss_family, get_in_addr((struct sockaddr *)&theirAddr), new_ip, sizeof new_ip);
 		std::cerr << "[CONNECTION]: " << new_ip << '\n';
-
-		if(!fork()) {	
+#ifdef __unix__
+		if(!fork()) {
 			close(sockfd);
 			if(sendTo(new_fd, "lyceumBSU<3")) {
 				std::cerr << "[ERROR]: sendTo\n";
@@ -114,6 +122,13 @@ bool server::startServer() {
 			return 1;
 		}
 		close(new_fd);
+#endif
+#ifdef _WIN32
+		if (sendTo(new_fd, "lyceumBSU<3")) {
+			std::cerr << "[ERROR]: sendTo\n";
+		}
+		closesocket(new_fd);
+#endif
 	}
 	return 0;
 }
