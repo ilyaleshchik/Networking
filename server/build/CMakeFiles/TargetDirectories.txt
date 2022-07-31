@@ -1,0 +1,6 @@
+/home/loludead/PROGRAMMING/c++/networking/Networking/server/build/CMakeFiles/rebuild_cache.dir
+/home/loludead/PROGRAMMING/c++/networking/Networking/server/build/CMakeFiles/edit_cache.dir
+/home/loludead/PROGRAMMING/c++/networking/Networking/server/build/CMakeFiles/server.dir
+/home/loludead/PROGRAMMING/c++/networking/Networking/server/build/ServerSource/CMakeFiles/rebuild_cache.dir
+/home/loludead/PROGRAMMING/c++/networking/Networking/server/build/ServerSource/CMakeFiles/edit_cache.dir
+/home/loludead/PROGRAMMING/c++/networking/Networking/server/build/ServerSource/CMakeFiles/serverlib.dir
