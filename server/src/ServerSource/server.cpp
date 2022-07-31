@@ -4,8 +4,6 @@
 
 server::server(std::string _port, int _backLog) {
 	port = _port;
-	inet_type = sock_type = -1;
-	ip = "-1";
 	backLog = _backLog;
 }
 
@@ -19,15 +17,6 @@ bool server::initWSA() {
 }
 #endif
 
-#ifdef __unix__
-void server::sigchld_handler(int s) {
-
-	int saved_errno = errno;
-	while(waitpid(-1, NULL, WNOHANG) > 0);
-	errno = saved_errno;
-	return;
-}
-#endif
 
 void *server::get_in_addr(struct sockaddr* sa) {
 	if(sa->sa_family == AF_INET) {
@@ -62,11 +51,7 @@ bool server::bindDefault() {
 			return 0;
 		}
 		if(bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
-#ifdef __unix__
 			close(sockfd);
-#else
-			closesocket(sockfd);
-#endif
 			perror("server: bind");
 			continue;
 		}
@@ -88,52 +73,35 @@ bool server::sendTo(int sockto, std::string msg) {
 bool server::startServer() {
 
 	if(listen(sockfd, backLog) == -1) {
+		std::cerr << "[ERROR]: listen()\n";
 		return 1;
 	}
-#ifdef __unix__
-	sa.sa_handler = server::sigchld_handler;
-	sigemptyset(&sa.sa_mask);
-	sa.sa_flags = SA_RESTART;
-	if (sigaction(SIGCHLD, &sa, NULL) == -1) {
-		std::cerr << "[ERROR]: sigaction";
-		return 1;
-	}
-#endif
 
-	std::cerr << "[SERVER]: waiting for connections...\n";
 	while(1) {
-		socklen_t sin_size;
-		sin_size = sizeof theirAddr;
-		int new_fd = accept(sockfd, (struct sockaddr *)&theirAddr, &sin_size);
-		if(new_fd == -1) {
-			std::cerr << "[ERROR]: Accept\n";
+		socklen_t sin_size = sizeof theirAddr;
+		int newfd = accept(sockfd, (sockaddr *)&theirAddr, &sin_size);
+
+		if(newfd == -1) {
+			std::cerr << "[ERROR]: Accept()\n";
 			continue;
+		}	
+		char newIp[INET6_ADDRSTRLEN];
+		inet_ntop(theirAddr.ss_family, get_in_addr((struct sockaddr *)&theirAddr), newIp, sizeof newIp);
+		std::cerr << "[CONNECTION]: new connection from " << newIp << '\n';
+		if(sendTo(newfd, "seek & destroy\n")) {
+			std::cerr << "[ERROR]: sendTo()\n";
 		}
-		char new_ip[INET6_ADDRSTRLEN];
-		inet_ntop(theirAddr.ss_family, get_in_addr((struct sockaddr *)&theirAddr), new_ip, sizeof new_ip);
-		std::cerr << "[CONNECTION]: " << new_ip << '\n';
-#ifdef __unix__
-		if(!fork()) {
-			close(sockfd);
-			if(sendTo(new_fd, "lyceumBSU<3")) {
-				std::cerr << "[ERROR]: sendTo\n";
-			}
-			close(new_fd);
-			return 1;
-		}
-		close(new_fd);
-#endif
-#ifdef _WIN32
-		if (sendTo(new_fd, "lyceumBSU<3")) {
-			std::cerr << "[ERROR]: sendTo\n";
-		}
-		closesocket(new_fd);
-#endif
+		close(newfd);	
 	}
+
 	return 0;
 }
 
 
 server::~server() {
+#ifdef _WIN32
+	WSACleanUp();
+#endif
+	close(sockfd);
 	delete serverinfo;
 }
