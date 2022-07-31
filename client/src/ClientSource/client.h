@@ -31,9 +31,9 @@ class client {
 
 private:
 
-    #ifdef _WIN32
+#ifdef _WIN32
     WSAData wsa;
-    #endif
+#endif
     struct addrinfo hints, *res;
     int sockfd;
     std::string ip, port;
@@ -42,9 +42,9 @@ private:
 
 public:
     client(std::string _ip, std::string _port);
-    #ifdef _WIN32
+#ifdef _WIN32
     bool initWSA();
-    #endif
+#endif
     bool connectServer();
     bool recvMessage(std::string &msg);//reciev text message
     ~client();

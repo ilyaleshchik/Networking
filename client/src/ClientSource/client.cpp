@@ -96,3 +96,9 @@ bool client::recvMessage(std::string &msg) {
 	return 0;
 }
 
+client::~client() {
+#ifdef _WIN32
+    WSACLeanup();
+#endif
+    delete res;
+}
