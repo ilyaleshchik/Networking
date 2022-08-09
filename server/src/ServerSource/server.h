@@ -1,6 +1,7 @@
 #pragma once
 #include <iostream>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string>
 #include <cstring>
 #include <errno.h>
@@ -21,6 +22,7 @@
 #include <signal.h>
 #include <unistd.h>
 #include <ifaddrs.h>
+#include <poll.h>
 #endif
 class server
 {
@@ -29,10 +31,9 @@ private:
 #ifdef _WIN32
 	WSAData wsa;
 #endif
-	struct addrinfo hints, *serverinfo;
-	struct sockaddr_in *ipAddr;
 	struct sockaddr_storage theirAddr;
-	int sockfd, backLog;
+	struct pollfd *pfds;
+	int backLog, usersCount, usersSize;
 	std::string port;
 #ifdef _WIN32
 	char yes = '1';
@@ -40,6 +41,9 @@ private:
 	int yes = 1;
 #endif
 	bool sendTo(int sockto, std::string msg);
+	int recvFrom(int fd, char *buff);
+	void addUser(struct pollfd *pfds[], int newfd);
+	void deleteUser(struct pollfd pfds[], int i);
 	void *get_in_addr(struct sockaddr *sa);
 
 public:
@@ -47,9 +51,7 @@ public:
 #ifdef _WIN32
 	bool initWSA();
 #endif
-
-	bool bindDefault();
-	bool startServer();
+	int getListener();
+	int startServer(void);
 	~server();
-
 };

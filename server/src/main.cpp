@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
 #ifdef _WIN32cd
 	srv->initWSA();
 #endif	
-	srv->bindDefault();
+
 	srv->startServer();
 
 	return 0;

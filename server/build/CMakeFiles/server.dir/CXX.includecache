@@ -11,6 +11,8 @@ iostream
 -
 stdlib.h
 -
+stdio.h
+-
 string
 -
 cstring
@@ -38,6 +40,8 @@ signal.h
 unistd.h
 -
 ifaddrs.h
+-
+poll.h
 -
 
 /home/loludead/PROGRAMMING/c++/networking/Networking/server/src/main.cpp

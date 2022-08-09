@@ -5,6 +5,8 @@
 server::server(std::string _port, int _backLog) {
 	port = _port;
 	backLog = _backLog;
+	usersCount = 1;
+	usersSize = 5;
 }
 
 #ifdef _WIN32
@@ -25,14 +27,14 @@ void *server::get_in_addr(struct sockaddr* sa) {
 	return &(((struct sockaddr_in6 *)sa)->sin6_addr);
 }
 
-bool server::bindDefault() {
+int server::getListener() {
 
-	freeaddrinfo(serverinfo);
+	struct addrinfo hints, *serverinfo;
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE;
-
+	int listener;
 	int rv = getaddrinfo(nullptr, port.c_str(), &hints, &serverinfo);
 	if(rv != 0) {
 		std::cerr << "[ERROR]: GetAddrinfo\n";
@@ -41,17 +43,17 @@ bool server::bindDefault() {
 	}
 	struct addrinfo *p;
 	for(p = serverinfo; p != NULL; p = p->ai_next) {
-		if((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+		if((listener = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
 			perror("server: socket");
 			continue;
 		}
-		if(setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
+		if(setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
 			perror("setsockopt");
 			freeaddrinfo(serverinfo);
 			return 0;
 		}
-		if(bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
-			close(sockfd);
+		if(bind(listener, p->ai_addr, p->ai_addrlen) == -1) {
+			close(listener);
 			perror("server: bind");
 			continue;
 		}
@@ -59,9 +61,9 @@ bool server::bindDefault() {
 	}
 	freeaddrinfo(serverinfo);
 	if(p == NULL) {
-		return 1;
+		return -1;
 	}
-	return 0;
+	return listener;
 }
 
 
@@ -69,32 +71,90 @@ bool server::sendTo(int sockto, std::string msg) {
 	return (send(sockto, msg.c_str(), msg.size(), 0) == -1);
 }
 
+int server::recvFrom(int fd, char *buff) {
+	return recv(fd, buff, sizeof buff, 0);
+}
 
-bool server::startServer() {
 
-	if(listen(sockfd, backLog) == -1) {
-		std::cerr << "[ERROR]: listen()\n";
+int server::startServer(void) {
+
+	usersCount = 1;
+	usersSize = 5;
+
+	pfds = new struct pollfd[usersSize];
+
+	int listener = getListener();
+	if(listener == -1) {
+		std::cerr << "[ERROR]: getListener()\n";
 		return 1;
 	}
-
+	if(listen(listener, backLog) == -1) {
+		std::cerr << "[ERROR]: listen()\n";
+		return 1;
+	}	
+	pfds[0].fd = listener;
+	pfds[0].events = POLLIN;
+	socklen_t addrlen;
+	char newUserIp[INET6_ADDRSTRLEN];
 	while(1) {
-		socklen_t sin_size = sizeof theirAddr;
-		int newfd = accept(sockfd, (sockaddr *)&theirAddr, &sin_size);
 
-		if(newfd == -1) {
-			std::cerr << "[ERROR]: Accept()\n";
-			continue;
-		}	
-		char newIp[INET6_ADDRSTRLEN];
-		inet_ntop(theirAddr.ss_family, get_in_addr((struct sockaddr *)&theirAddr), newIp, sizeof newIp);
-		std::cerr << "[CONNECTION]: new connection from " << newIp << '\n';
-		if(sendTo(newfd, "seek & destroy\n")) {
-			std::cerr << "[ERROR]: sendTo()\n";
+		int poll_count = poll(pfds, usersCount, -1);
+
+		if(poll_count == -1) {
+			perror("[ERROR] poll(): ");
+			exit(1);
 		}
-		close(newfd);	
-	}
+		for(int i = 0; i < usersCount; i++) {
+			if(pfds[i].revents & POLLIN) {//event on socket i
+				if(pfds[i].fd == listener) {
+					addrlen = sizeof(theirAddr);
+					int newfd = accept(listener, (struct sockaddr*)&theirAddr, &addrlen);
+					if(newfd == -1) {
+						perror("[ERROR] accept():");
+					}else {
+						inet_ntop(theirAddr.ss_family, get_in_addr((struct sockaddr *)&theirAddr), newUserIp, sizeof(newUserIp));
+						std::cerr << "[CONNECTION]: connection from " << newUserIp << '\n';
+						addUser(&pfds, newfd);
+					}
+				}else {
+					char buff[256];
+					int nbytes = recvFrom(pfds[i].fd, buff);
+					if(nbytes <= 0) {
+						close(pfds[i].fd);
+						deleteUser(pfds, i);
+						std::cerr << "[DISCONNECTION]: user has disconnected\n";
+					}else {
+						std::cerr << "[MESSAGE]: " << buff << '\n';
+					}
+				}
+			}
+		}
 
-	return 0;
+
+	}
+}
+
+
+
+void server::addUser(struct pollfd *pfds[], int newfd) {
+
+	if(usersCount == usersSize) {
+		usersSize *= 2;
+		*pfds = (struct pollfd *)realloc(*pfds, usersSize);
+	}
+	(*pfds)[usersCount].fd = newfd;
+	(*pfds)[usersCount].events = POLLIN;
+	usersCount++;
+	return;
+}
+
+
+void server::deleteUser(struct pollfd pfds[], int i) {
+
+	assert(i < usersCount);
+	pfds[i] = pfds[usersCount - 1];
+	usersCount--;
+	return;
 }
 
 
@@ -102,6 +162,4 @@ server::~server() {
 #ifdef _WIN32
 	WSACleanUp();
 #endif
-	close(sockfd);
-	delete serverinfo;
 }
