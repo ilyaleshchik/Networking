@@ -19,6 +19,8 @@ cstring
 -
 errno.h
 -
+vector
+-
 winsock2.h
 -
 ws2tcpip.h

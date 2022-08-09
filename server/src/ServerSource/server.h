@@ -5,6 +5,7 @@
 #include <string>
 #include <cstring>
 #include <errno.h>
+#include <vector>
 #ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -32,8 +33,9 @@ private:
 	WSAData wsa;
 #endif
 	struct sockaddr_storage theirAddr;
-	struct pollfd *pfds;
-	int backLog, usersCount, usersSize;
+	std::vector<pollfd> users;
+	std::vector<int> ports;
+	int backLog, usersCount;
 	std::string port;
 #ifdef _WIN32
 	char yes = '1';
@@ -42,9 +44,10 @@ private:
 #endif
 	bool sendTo(int sockto, std::string msg);
 	int recvFrom(int fd, char *buff);
-	void addUser(struct pollfd *pfds[], int newfd);
-	void deleteUser(struct pollfd pfds[], int i);
+	void addUser(int newfd, int port);
+	void deleteUser(int i);
 	void *get_in_addr(struct sockaddr *sa);
+	int get_in_port(struct sockaddr *sa);
 
 public:
 	server(std::string _port, int _backLog);

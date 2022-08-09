@@ -6,7 +6,8 @@ server::server(std::string _port, int _backLog) {
 	port = _port;
 	backLog = _backLog;
 	usersCount = 1;
-	usersSize = 5;
+	users.resize(usersCount);
+	ports.resize(usersCount);
 }
 
 #ifdef _WIN32
@@ -25,6 +26,12 @@ void *server::get_in_addr(struct sockaddr* sa) {
 		return &(((struct sockaddr_in *)sa)->sin_addr);
 	}
 	return &(((struct sockaddr_in6 *)sa)->sin6_addr);
+}
+int server::get_in_port(struct sockaddr *sa) {
+	if(sa->sa_family == AF_INET) {
+		return htons(((struct sockaddr_in *)sa)->sin_port);
+	}
+	return ntohs(((struct sockaddr_in6 *)sa)->sin6_port);
 }
 
 int server::getListener() {
@@ -78,11 +85,6 @@ int server::recvFrom(int fd, char *buff) {
 
 int server::startServer(void) {
 
-	usersCount = 1;
-	usersSize = 5;
-
-	pfds = new struct pollfd[usersSize];
-
 	int listener = getListener();
 	if(listener == -1) {
 		std::cerr << "[ERROR]: getListener()\n";
@@ -91,40 +93,43 @@ int server::startServer(void) {
 	if(listen(listener, backLog) == -1) {
 		std::cerr << "[ERROR]: listen()\n";
 		return 1;
-	}	
-	pfds[0].fd = listener;
-	pfds[0].events = POLLIN;
+	}
+
+	users[0].fd = listener;
+	users[0].events = POLLIN;
+	ports[0] = 0;
 	socklen_t addrlen;
 	char newUserIp[INET6_ADDRSTRLEN];
 	while(1) {
 
-		int poll_count = poll(pfds, usersCount, -1);
-
+		int poll_count = poll(users.data(), usersCount, -1);
 		if(poll_count == -1) {
 			perror("[ERROR] poll(): ");
 			exit(1);
 		}
 		for(int i = 0; i < usersCount; i++) {
-			if(pfds[i].revents & POLLIN) {//event on socket i
-				if(pfds[i].fd == listener) {
+			std::cerr << i << '\n';
+			if(users[i].revents & POLLIN) {//event on socket i
+				if(users[i].fd == listener) {//new connection
 					addrlen = sizeof(theirAddr);
 					int newfd = accept(listener, (struct sockaddr*)&theirAddr, &addrlen);
 					if(newfd == -1) {
 						perror("[ERROR] accept():");
 					}else {
 						inet_ntop(theirAddr.ss_family, get_in_addr((struct sockaddr *)&theirAddr), newUserIp, sizeof(newUserIp));
-						std::cerr << "[CONNECTION]: connection from " << newUserIp << '\n';
-						addUser(&pfds, newfd);
+						int newUserPort = get_in_port((struct sockaddr *)&theirAddr);
+						std::cerr << "[CONNECTION]: connection from " << newUserIp << ":" << newUserPort << '\n';
+						addUser(newfd, newUserPort);
 					}
 				}else {
-					char buff[256];
-					int nbytes = recvFrom(pfds[i].fd, buff);
+					char buff[256] = {0};
+					int nbytes = recv(users[i].fd, buff, sizeof buff, 0);
+					buff[nbytes] = '\n';
 					if(nbytes <= 0) {
-						close(pfds[i].fd);
-						deleteUser(pfds, i);
+						deleteUser(i);
 						std::cerr << "[DISCONNECTION]: user has disconnected\n";
 					}else {
-						std::cerr << "[MESSAGE]: " << buff << '\n';
+						std::cerr << "[MESSAGE] " << ports[i] << ": " << buff;
 					}
 				}
 			}
@@ -136,23 +141,25 @@ int server::startServer(void) {
 
 
 
-void server::addUser(struct pollfd *pfds[], int newfd) {
-
-	if(usersCount == usersSize) {
-		usersSize *= 2;
-		*pfds = (struct pollfd *)realloc(*pfds, usersSize);
-	}
-	(*pfds)[usersCount].fd = newfd;
-	(*pfds)[usersCount].events = POLLIN;
+void server::addUser(int newfd, int port) {
+	
+	pollfd newUser;
+	newUser.fd = newfd;
+	newUser.events = POLLIN;
+	users.push_back(newUser);
+	ports.push_back(port);
 	usersCount++;
 	return;
 }
 
 
-void server::deleteUser(struct pollfd pfds[], int i) {
-
-	assert(i < usersCount);
-	pfds[i] = pfds[usersCount - 1];
+void server::deleteUser(int i) {
+	assert(i < usersCount && i > 0);
+	close(users[i].fd);
+	users[i] = users[usersCount - 1];
+	ports[i] = ports[usersCount - 1];
+	users.pop_back();
+	ports.pop_back();
 	usersCount--;
 	return;
 }
